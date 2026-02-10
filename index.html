@@ -3,162 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sourcing Job Tracker</title>
+    <title>Sourcing Job Tracker - Pro Table View</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .table-row-hover:hover { background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-slate-50 text-slate-800 font-sans">
 
-<div id="app" class="min-h-screen p-6">
-    <header class="max-w-7xl mx-auto mb-8 flex justify-between items-center">
+<div id="app" class="min-h-screen p-4 md:p-8">
+    <header class="max-w-[1600px] mx-auto mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Sourcing Job Tracker</h1>
-            <p class="text-sm text-gray-500">管理您的採購訂單與利潤分析</p>
+            <h1 class="text-2xl font-bold text-slate-900">Sourcing Job Tracker</h1>
+            <p class="text-sm text-slate-500">專注於跨幣種採購與銷售管理</p>
         </div>
-        <button @click="showModal = true" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition text-sm flex items-center">
-            <i class="fas fa-plus mr-2"></i> 新增 Job
-        </button>
+        <div class="flex gap-3">
+            <div class="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex flex-col">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Total Sales (AUD)</span>
+                <span class="text-lg font-bold text-slate-800">${{ totalSales.toLocaleString() }}</span>
+            </div>
+            <button @click="openAddModal" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2 rounded-lg transition shadow-lg flex items-center">
+                <i class="fas fa-plus mr-2 text-xs"></i> 新增項目
+            </button>
+        </div>
     </header>
 
-    <div class="max-w-7xl mx-auto mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <p class="text-xs text-gray-400 uppercase font-semibold">總銷售額 (Total Sales)</p>
-            <p class="text-xl font-bold text-slate-900">${{ totalSales.toLocaleString() }}</p>
+    <div class="max-w-[1600px] mx-auto mb-4 flex flex-wrap gap-3 items-center">
+        <div class="relative flex-1 min-w-[300px]">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input v-model="searchQuery" type="text" placeholder="搜尋客戶、產品或 Job#..." 
+                   class="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-slate-300 outline-none bg-white">
         </div>
-        <div class="md:col-span-3 flex gap-4">
-            <input v-model="searchQuery" type="text" placeholder="搜尋 Customer, Item 或 Job#..." 
-                   class="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-slate-400 bg-white">
-            <select v-model="sortAssignee" class="px-4 py-2 rounded-lg border border-gray-200 focus:outline-none bg-white">
-                <option value="">所有負責人 (Assigned)</option>
-                <option v-for="name in uniqueAssignees" :key="name" :value="name">{{ name }}</option>
-            </select>
+        <select v-model="sortAssignee" class="px-4 py-2 rounded-lg border border-slate-200 bg-white outline-none">
+            <option value="">所有負責人</option>
+            <option v-for="name in uniqueAssignees" :key="name" :value="name">{{ name }}</option>
+        </select>
+    </div>
+
+    <div class="max-w-[1600px] mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[1200px]">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+                        <th class="px-4 py-3 w-16 text-center">Image</th>
+                        <th class="px-4 py-3">Job# / Customer</th>
+                        <th class="px-4 py-3">Item Name</th>
+                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">Qty</th>
+                        <th class="px-4 py-3">Buying Cost (Foreign)</th>
+                        <th class="px-4 py-3 text-blue-600 font-extrabold underline decoration-blue-200">Selling (AUD)</th>
+                        <th class="px-4 py-3">Profit (AUD)</th>
+                        <th class="px-4 py-3">Margin %</th>
+                        <th class="px-4 py-3">Supplier</th>
+                        <th class="px-4 py-3">Assigned</th>
+                        <th class="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm divide-y divide-slate-100">
+                    <tr v-for="(job, index) in filteredJobs" :key="index" class="table-row-hover transition-colors">
+                        <td class="px-4 py-3">
+                            <div class="w-12 h-12 bg-slate-100 rounded border border-slate-100 overflow-hidden flex items-center justify-center">
+                                <img v-if="job.image" :src="job.image" class="w-full h-full object-cover">
+                                <i v-else class="fas fa-box text-slate-300"></i>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <p class="font-mono text-[10px] text-slate-400">#{{ job.jobNum }}</p>
+                            <p class="font-bold text-slate-800">{{ job.customer }}</p>
+                        </td>
+                        <td class="px-4 py-3 text-slate-600 truncate max-w-[150px]">{{ job.item }}</td>
+                        <td class="px-4 py-3">
+                            <span :class="statusBadge(job.status)">{{ job.status }}</span>
+                        </td>
+                        <td class="px-4 py-3 font-medium">{{ job.qty }}</td>
+                        <td class="px-4 py-3">
+                            <p class="text-[10px] text-slate-400">{{ job.buyCurrency }}</p>
+                            <p>{{ job.buy.toLocaleString() }}</p>
+                        </td>
+                        <td class="px-4 py-3 font-bold text-slate-900 underline decoration-slate-100">
+                            ${{ job.sell.toLocaleString() }}
+                        </td>
+                        <td class="px-4 py-3" :class="calculateProfit(job) >= 0 ? 'text-emerald-600' : 'text-red-500'">
+                            <span class="font-bold">${{ calculateProfit(job).toLocaleString() }}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold">
+                                {{ calculateMargin(job) }}%
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-slate-500 italic">{{ job.supplier }}</td>
+                        <td class="px-4 py-3 font-semibold text-slate-700">{{ job.assigned }}</td>
+                        <td class="px-4 py-3 text-right">
+                            <button @click="editJob(index)" class="p-2 text-slate-400 hover:text-slate-800">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-if="filteredJobs.length === 0" class="p-20 text-center text-slate-400">
+            目前沒有資料
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="(job, index) in filteredJobs" :key="index" 
-             class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition duration-300">
+    <div v-if="showModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h2 class="text-xl font-bold text-slate-800">{{ isEditing ? '修改 Job 資料' : '新增 Sourcing Job' }}</h2>
+                <button @click="closeModal" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+            </div>
             
-            <div class="flex p-4 border-b border-gray-50">
-                <div class="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden">
-                    <img v-if="job.image" :src="job.image" class="w-full h-full object-cover">
-                    <div v-else class="w-full h-full flex items-center justify-center text-gray-300 text-xs">No Image</div>
-                </div>
-                <div class="ml-4 flex-1">
-                    <div class="flex justify-between items-start">
-                        <span class="text-xs font-mono text-slate-400">#{{ job.jobNum }}</span>
-                        <span :class="statusBadge(job.status)">{{ job.status }}</span>
+            <div class="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="md:col-span-3">
+                    <label class="block text-xs font-bold text-slate-500 mb-2">PRODUCT IMAGE</label>
+                    <div class="flex items-center gap-4">
+                        <div class="w-20 h-20 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center overflow-hidden bg-slate-50">
+                            <img v-if="form.image" :src="form.image" class="w-full h-full object-cover">
+                            <i v-else class="fas fa-camera text-slate-300"></i>
+                        </div>
+                        <input type="file" @change="handleFileUpload" accept="image/*" class="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
                     </div>
-                    <h3 class="font-bold text-gray-900 truncate">{{ job.customer }}</h3>
-                    <p class="text-sm text-gray-500 truncate">{{ job.item }}</p>
                 </div>
-            </div>
 
-            <div class="p-4 grid grid-cols-2 gap-y-3 text-sm">
-                <div>
-                    <p class="text-gray-400 text-xs">Qty / Supplier</p>
-                    <p class="font-medium">{{ job.qty }} / {{ job.supplier }}</p>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Customer</label>
+                    <input v-model="form.customer" class="w-full border rounded-lg p-2.5 bg-slate-50">
                 </div>
-                <div class="text-right">
-                    <p class="text-gray-400 text-xs">Assigned To</p>
-                    <p class="font-medium text-slate-700">{{ job.assigned }}</p>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Item Name</label>
+                    <input v-model="form.item" class="w-full border rounded-lg p-2.5 bg-slate-50">
                 </div>
-                <div class="pt-2 border-t border-gray-50">
-                    <p class="text-gray-400 text-xs">Buying / Selling</p>
-                    <p class="font-medium">${{ job.buy }} / ${{ job.sell }}</p>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Job #</label>
+                    <input v-model="form.jobNum" class="w-full border rounded-lg p-2.5 bg-slate-50">
                 </div>
-                <div class="pt-2 border-t border-gray-50 text-right">
-                    <p class="text-gray-400 text-xs">Profit ({{ calculateMargin(job) }}%)</p>
-                    <p class="font-bold text-emerald-600 font-mono text-base">${{ calculateProfit(job) }}</p>
-                </div>
-            </div>
 
-            <div class="px-4 py-3 bg-gray-50 flex justify-end gap-2">
-                <button @click="editJob(index)" class="text-slate-500 hover:text-slate-800 text-sm px-2 py-1">
-                    <i class="fas fa-edit mr-1"></i> 修改
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div v-if="filteredJobs.length === 0" class="text-center py-20 text-gray-400">
-        <i class="fas fa-search fa-3x mb-4 opacity-20"></i>
-        <p>沒有找到相關資料</p>
-    </div>
-
-    <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-6 text-slate-800">{{ isEditing ? '修改資料' : '新增 Sourcing Job' }}</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="md:col-span-2">
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">IMAGE URL</label>
-                    <input v-model="form.image" type="text" class="w-full border rounded-lg p-2" placeholder="https://...">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">CUSTOMER</label>
-                    <input v-model="form.customer" type="text" class="w-full border rounded-lg p-2">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">ITEM</label>
-                    <input v-model="form.item" type="text" class="w-full border rounded-lg p-2">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">JOB #</label>
-                    <input v-model="form.jobNum" type="text" class="w-full border rounded-lg p-2">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">STATUS</label>
-                    <select v-model="form.status" class="w-full border rounded-lg p-2">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Status</label>
+                    <select v-model="form.status" class="w-full border rounded-lg p-2.5 bg-slate-50">
                         <option>Pending</option>
                         <option>Ordered</option>
                         <option>Shipped</option>
                         <option>Completed</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">ASSIGNED</label>
-                    <input v-model="form.assigned" type="text" class="w-full border rounded-lg p-2">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Assigned</label>
+                    <input v-model="form.assigned" class="w-full border rounded-lg p-2.5 bg-slate-50">
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">SUPPLIER</label>
-                    <input v-model="form.supplier" type="text" class="w-full border rounded-lg p-2">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Supplier</label>
+                    <input v-model="form.supplier" class="w-full border rounded-lg p-2.5 bg-slate-50">
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">QTY</label>
-                    <input v-model.number="form.qty" type="number" class="w-full border rounded-lg p-2">
+
+                <div class="bg-blue-50 p-4 rounded-xl space-y-3 md:col-span-1">
+                    <label class="text-[10px] font-bold text-blue-500 uppercase">Buy Cost (Foreign)</label>
+                    <div class="flex gap-2">
+                        <select v-model="form.buyCurrency" class="border rounded p-2 text-xs">
+                            <option value="USD">USD</option>
+                            <option value="RMB">RMB</option>
+                        </select>
+                        <input v-model.number="form.buy" type="number" class="w-full border rounded p-2">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">BUYING PRICE</label>
-                    <input v-model.number="form.buy" type="number" class="w-full border rounded-lg p-2">
+
+                <div class="bg-slate-50 p-4 rounded-xl space-y-3">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Qty</label>
+                    <input v-model.number="form.qty" type="number" class="w-full border rounded p-2">
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">SELLING PRICE</label>
-                    <input v-model.number="form.sell" type="number" class="w-full border rounded-lg p-2">
+
+                <div class="bg-emerald-50 p-4 rounded-xl space-y-3">
+                    <label class="text-[10px] font-bold text-emerald-600 uppercase">Selling Price (AUD)</label>
+                    <input v-model.number="form.sell" type="number" class="w-full border rounded p-2">
                 </div>
             </div>
 
-            <div class="mt-6 p-4 bg-slate-50 rounded-lg grid grid-cols-3 text-center">
-                <div>
-                    <p class="text-xs text-gray-400">Profit</p>
-                    <p class="font-bold">${{ (form.sell - form.buy) * form.qty }}</p>
+            <div class="p-6 bg-slate-900 text-white flex justify-between items-center">
+                <div class="flex gap-8">
+                    <div>
+                        <p class="text-[10px] text-slate-400 uppercase">Total Profit (AUD)</p>
+                        <p class="text-xl font-mono font-bold">${{ calculateProfit(form).toLocaleString() }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 uppercase">Margin %</p>
+                        <p class="text-xl font-mono font-bold text-emerald-400">{{ calculateMargin(form) }}%</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-xs text-gray-400">Markup%</p>
-                    <p class="font-bold">{{ form.buy ? (((form.sell - form.buy) / form.buy) * 100).toFixed(1) : 0 }}%</p>
+                <div class="flex gap-4">
+                    <button @click="closeModal" class="text-slate-400 hover:text-white transition">取消</button>
+                    <button @click="saveJob" class="bg-white text-slate-900 px-8 py-2 rounded-lg font-bold hover:bg-slate-100 transition shadow-lg">
+                        {{ isEditing ? '更新資料' : '儲存 Job' }}
+                    </button>
                 </div>
-                <div>
-                    <p class="text-xs text-gray-400">Margin%</p>
-                    <p class="font-bold">{{ form.sell ? (((form.sell - form.buy) / form.sell) * 100).toFixed(1) : 0 }}%</p>
-                </div>
-            </div>
-
-            <div class="mt-8 flex justify-end gap-3">
-                <button @click="closeModal" class="px-4 py-2 text-gray-500 hover:text-gray-700">取消</button>
-                <button @click="saveJob" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-semibold hover:bg-slate-700 transition">
-                    保存資料
-                </button>
             </div>
         </div>
     </div>
@@ -176,23 +217,38 @@
             const isEditing = ref(false);
             const editIndex = ref(null);
 
+            // 匯率預設值 (建議之後可接入 API)
+            const rates = { USD: 1.54, RMB: 0.21 }; // 1 外幣 = X AUD
+
             const form = ref({
                 image: '', customer: '', item: '', jobNum: '', qty: 1, 
-                status: 'Pending', assigned: '', supplier: '', buy: 0, sell: 0
+                status: 'Pending', assigned: '', supplier: '', 
+                buy: 0, buyCurrency: 'USD', sell: 0
             });
 
-            // 從 LocalStorage 讀取資料
             onMounted(() => {
-                const saved = localStorage.getItem('sourcing_jobs');
+                const saved = localStorage.getItem('sourcing_jobs_pro');
                 if (saved) jobs.value = JSON.parse(saved);
             });
+
+            // 核心邏輯：計算
+            const calculateProfit = (job) => {
+                const buyInAUD = job.buy * (rates[job.buyCurrency] || 1);
+                return (job.sell - buyInAUD) * job.qty;
+            };
+
+            const calculateMargin = (job) => {
+                const buyInAUD = job.buy * (rates[job.buyCurrency] || 1);
+                if (!job.sell) return 0;
+                return (((job.sell - buyInAUD) / job.sell) * 100).toFixed(1);
+            };
 
             const filteredJobs = computed(() => {
                 return jobs.value.filter(job => {
                     const matchSearch = job.customer.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
                                         job.item.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
                                         job.jobNum.toLowerCase().includes(searchQuery.value.toLowerCase());
-                    const matchAssignee = sortAssignee.value === '' || job.assigned === sortAssignee.value;
+                    const matchAssignee = !sortAssignee.value || job.assigned === sortAssignee.value;
                     return matchSearch && matchAssignee;
                 });
             });
@@ -201,48 +257,53 @@
                 return filteredJobs.value.reduce((sum, job) => sum + (job.sell * job.qty), 0);
             });
 
-            const uniqueAssignees = computed(() => {
-                return [...new Set(jobs.value.map(j => j.assigned))].filter(n => n);
-            });
+            const uniqueAssignees = computed(() => [...new Set(jobs.value.map(j => j.assigned))].filter(n => n));
 
-            const calculateProfit = (job) => (job.sell - job.buy) * job.qty;
-            const calculateMargin = (job) => job.sell ? (((job.sell - job.buy) / job.sell) * 100).toFixed(1) : 0;
+            // 圖片上傳 (轉 Base64 存儲)
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        form.value.image = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
 
-            const statusBadge = (status) => {
-                const base = "text-[10px] uppercase px-2 py-0.5 rounded-full font-bold ";
-                if (status === 'Completed') return base + "bg-emerald-100 text-emerald-700";
-                if (status === 'Shipped') return base + "bg-blue-100 text-blue-700";
-                if (status === 'Ordered') return base + "bg-amber-100 text-amber-700";
-                return base + "bg-gray-100 text-gray-600";
+            const statusBadge = (s) => {
+                const base = "px-2 py-0.5 rounded text-[10px] font-bold uppercase ";
+                if (s === 'Completed') return base + "bg-emerald-100 text-emerald-700";
+                if (s === 'Shipped') return base + "bg-blue-100 text-blue-700";
+                if (s === 'Ordered') return base + "bg-amber-100 text-amber-600";
+                return base + "bg-slate-100 text-slate-500";
             };
 
             const saveJob = () => {
-                if (isEditing.value) {
-                    jobs.value[editIndex.value] = { ...form.value };
-                } else {
-                    jobs.value.push({ ...form.value });
-                }
-                localStorage.setItem('sourcing_jobs', JSON.stringify(jobs.value));
+                if (isEditing.value) jobs.value[editIndex.value] = { ...form.value };
+                else jobs.value.push({ ...form.value });
+                localStorage.setItem('sourcing_jobs_pro', JSON.stringify(jobs.value));
                 closeModal();
+            };
+
+            const openAddModal = () => {
+                isEditing.value = false;
+                form.value = { image: '', customer: '', item: '', jobNum: '', qty: 1, status: 'Pending', assigned: '', supplier: '', buy: 0, buyCurrency: 'USD', sell: 0 };
+                showModal.value = true;
             };
 
             const editJob = (index) => {
                 isEditing.value = true;
                 editIndex.value = index;
-                form.value = { ...filteredJobs.value[index] };
+                form.value = { ...jobs.value[index] };
                 showModal.value = true;
             };
 
-            const closeModal = () => {
-                showModal.value = false;
-                isEditing.value = false;
-                form.value = { image: '', customer: '', item: '', jobNum: '', qty: 1, status: 'Pending', assigned: '', supplier: '', buy: 0, sell: 0 };
-            };
+            const closeModal = () => { showModal.value = false; };
 
             return {
-                jobs, searchQuery, sortAssignee, showModal, form, isEditing,
-                filteredJobs, totalSales, uniqueAssignees,
-                calculateProfit, calculateMargin, statusBadge, saveJob, editJob, closeModal
+                jobs, searchQuery, sortAssignee, showModal, form, isEditing, filteredJobs, totalSales, uniqueAssignees,
+                handleFileUpload, calculateProfit, calculateMargin, statusBadge, saveJob, editJob, openAddModal, closeModal
             }
         }
     }).mount('#app')
