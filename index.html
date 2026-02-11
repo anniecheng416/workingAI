@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sourcing Job Tracker - Pro Table View</title>
+    <title>Sourcing Tracker Pro - v3</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .table-row-hover:hover { background-color: #f8fafc; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .modal-overlay { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); }
+        .image-preview-overlay { background: rgba(0, 0, 0, 0.9); z-index: 100; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
@@ -18,186 +18,197 @@
 <div id="app" class="min-h-screen p-4 md:p-8">
     <header class="max-w-[1600px] mx-auto mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900">Sourcing Job Tracker</h1>
-            <p class="text-sm text-slate-500">專注於跨幣種採購與銷售管理</p>
+            <h1 class="text-2xl font-bold text-slate-900 leading-tight">Sourcing Job Tracker <span class="text-sm font-normal text-slate-400">v3.0</span></h1>
+            <p class="text-sm text-slate-500">已加入運費及其他成本計算 | 支援連結與圖片預覽</p>
         </div>
-        <div class="flex gap-3">
-            <div class="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex flex-col">
-                <span class="text-[10px] text-slate-400 font-bold uppercase">Total Sales (AUD)</span>
-                <span class="text-lg font-bold text-slate-800">${{ totalSales.toLocaleString() }}</span>
+        <div class="flex gap-4">
+            <div class="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm">
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-1">Total Result Sales (AUD)</span>
+                <span class="text-2xl font-bold text-slate-900">${{ totalSales.toLocaleString() }}</span>
             </div>
-            <button @click="openAddModal" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2 rounded-lg transition shadow-lg flex items-center">
-                <i class="fas fa-plus mr-2 text-xs"></i> 新增項目
+            <button @click="openAddModal" class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-2 rounded-xl transition-all shadow-lg flex items-center self-center">
+                <i class="fas fa-plus mr-2"></i> 新增 Job
             </button>
         </div>
     </header>
 
-    <div class="max-w-[1600px] mx-auto mb-4 flex flex-wrap gap-3 items-center">
-        <div class="relative flex-1 min-w-[300px]">
-            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input v-model="searchQuery" type="text" placeholder="搜尋客戶、產品或 Job#..." 
-                   class="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-slate-300 outline-none bg-white">
-        </div>
-        <select v-model="sortAssignee" class="px-4 py-2 rounded-lg border border-slate-200 bg-white outline-none">
-            <option value="">所有負責人</option>
-            <option v-for="name in uniqueAssignees" :key="name" :value="name">{{ name }}</option>
-        </select>
-    </div>
-
-    <div class="max-w-[1600px] mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="max-w-[1600px] mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse min-w-[1200px]">
+            <table class="w-full text-left border-collapse min-w-[1400px]">
                 <thead>
-                    <tr class="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
-                        <th class="px-4 py-3 w-16 text-center">Image</th>
-                        <th class="px-4 py-3">Job# / Customer</th>
-                        <th class="px-4 py-3">Item Name</th>
-                        <th class="px-4 py-3">Status</th>
-                        <th class="px-4 py-3">Qty</th>
-                        <th class="px-4 py-3">Buying Cost (Foreign)</th>
-                        <th class="px-4 py-3 text-blue-600 font-extrabold underline decoration-blue-200">Selling (AUD)</th>
-                        <th class="px-4 py-3">Profit (AUD)</th>
-                        <th class="px-4 py-3">Margin %</th>
-                        <th class="px-4 py-3">Supplier</th>
-                        <th class="px-4 py-3">Assigned</th>
-                        <th class="px-4 py-3 text-right">Actions</th>
+                    <tr class="bg-slate-50/50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+                        <th class="px-4 py-4 w-20 text-center">Image</th>
+                        <th class="px-4 py-4">Job Info</th>
+                        <th class="px-4 py-4">Status</th>
+                        <th class="px-4 py-4">Links</th>
+                        <th class="px-4 py-4">Cost Analysis (AUD)</th>
+                        <th class="px-4 py-4 text-blue-600">Sell (AUD)</th>
+                        <th class="px-4 py-4">Total Profit</th>
+                        <th class="px-4 py-4">Margin %</th>
+                        <th class="px-4 py-4">People</th>
+                        <th class="px-4 py-4 text-right">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="text-sm divide-y divide-slate-100">
+                <tbody class="divide-y divide-slate-100">
                     <tr v-for="(job, index) in filteredJobs" :key="index" class="table-row-hover transition-colors">
-                        <td class="px-4 py-3">
-                            <div class="w-12 h-12 bg-slate-100 rounded border border-slate-100 overflow-hidden flex items-center justify-center">
+                        <td class="px-4 py-4 text-center">
+                            <div @click="zoomImage = job.image" class="w-14 h-14 bg-slate-100 rounded-lg border border-slate-100 overflow-hidden cursor-zoom-in mx-auto">
                                 <img v-if="job.image" :src="job.image" class="w-full h-full object-cover">
-                                <i v-else class="fas fa-box text-slate-300"></i>
+                                <i v-else class="fas fa-box text-slate-300 mt-4"></i>
                             </div>
                         </td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-4">
                             <p class="font-mono text-[10px] text-slate-400">#{{ job.jobNum }}</p>
-                            <p class="font-bold text-slate-800">{{ job.customer }}</p>
+                            <p class="font-bold text-slate-900">{{ job.customer }}</p>
+                            <p class="text-xs text-slate-500 truncate max-w-[150px]">{{ job.item }}</p>
                         </td>
-                        <td class="px-4 py-3 text-slate-600 truncate max-w-[150px]">{{ job.item }}</td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-4">
                             <span :class="statusBadge(job.status)">{{ job.status }}</span>
                         </td>
-                        <td class="px-4 py-3 font-medium">{{ job.qty }}</td>
-                        <td class="px-4 py-3">
-                            <p class="text-[10px] text-slate-400">{{ job.buyCurrency }}</p>
-                            <p>{{ job.buy.toLocaleString() }}</p>
+                        <td class="px-4 py-4">
+                            <div class="flex gap-2">
+                                <a v-if="job.briefLink" :href="job.briefLink" target="_blank" class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition" title="Brief">
+                                    <i class="fas fa-file-alt"></i>
+                                </a>
+                                <a v-if="job.quoteLink" :href="job.quoteLink" target="_blank" class="w-8 h-8 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-full hover:bg-emerald-100 transition" title="Quotation">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </a>
+                                <span v-if="!job.briefLink && !job.quoteLink" class="text-slate-300 text-xs">-</span>
+                            </div>
                         </td>
-                        <td class="px-4 py-3 font-bold text-slate-900 underline decoration-slate-100">
-                            ${{ job.sell.toLocaleString() }}
+                        <td class="px-4 py-4 text-sm">
+                            <div class="flex flex-col gap-1">
+                                <span class="text-[10px] text-slate-400 uppercase">Buy: {{job.buyCurrency}} {{job.buy}}</span>
+                                <span class="text-[10px] text-slate-400 uppercase">Courier/Other: ${{job.courierCost || 0}} / ${{job.otherCost || 0}}</span>
+                            </div>
                         </td>
-                        <td class="px-4 py-3" :class="calculateProfit(job) >= 0 ? 'text-emerald-600' : 'text-red-500'">
-                            <span class="font-bold">${{ calculateProfit(job).toLocaleString() }}</span>
+                        <td class="px-4 py-4 font-bold text-slate-900">${{ job.sell.toLocaleString() }}</td>
+                        <td class="px-4 py-4" :class="calculateProfit(job) >= 0 ? 'text-emerald-600' : 'text-red-500'">
+                            <p class="font-bold text-base">${{ calculateProfit(job).toLocaleString() }}</p>
                         </td>
-                        <td class="px-4 py-3">
-                            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold">
-                                {{ calculateMargin(job) }}%
-                            </span>
+                        <td class="px-4 py-4">
+                            <span class="px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-bold">{{ calculateMargin(job) }}%</span>
                         </td>
-                        <td class="px-4 py-3 text-slate-500 italic">{{ job.supplier }}</td>
-                        <td class="px-4 py-3 font-semibold text-slate-700">{{ job.assigned }}</td>
-                        <td class="px-4 py-3 text-right">
-                            <button @click="editJob(index)" class="p-2 text-slate-400 hover:text-slate-800">
-                                <i class="fas fa-pencil-alt"></i>
+                        <td class="px-4 py-4">
+                            <p class="text-xs font-semibold">{{ job.assigned }}</p>
+                            <p class="text-[10px] text-slate-400">{{ job.supplier }}</p>
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            <button @click="editJob(index)" class="w-8 h-8 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-full transition">
+                                <i class="fas fa-edit"></i>
                             </button>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        <div v-if="filteredJobs.length === 0" class="p-20 text-center text-slate-400">
-            目前沒有資料
-        </div>
     </div>
 
-    <div v-if="showModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h2 class="text-xl font-bold text-slate-800">{{ isEditing ? '修改 Job 資料' : '新增 Sourcing Job' }}</h2>
+    <div v-if="zoomImage" @click="zoomImage = null" class="fixed inset-0 image-preview-overlay flex items-center justify-center p-8">
+        <img :src="zoomImage" class="max-w-full max-h-full rounded-lg shadow-2xl">
+        <button class="absolute top-10 right-10 text-white text-3xl">&times;</button>
+    </div>
+
+    <div v-if="showModal" class="fixed inset-0 modal-overlay flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-slate-800">{{ isEditing ? 'Edit Sourcing Job' : 'New Sourcing Job' }}</h2>
                 <button @click="closeModal" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
             </div>
             
-            <div class="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div class="md:col-span-3">
-                    <label class="block text-xs font-bold text-slate-500 mb-2">PRODUCT IMAGE</label>
-                    <div class="flex items-center gap-4">
-                        <div class="w-20 h-20 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center overflow-hidden bg-slate-50">
-                            <img v-if="form.image" :src="form.image" class="w-full h-full object-cover">
-                            <i v-else class="fas fa-camera text-slate-300"></i>
-                        </div>
-                        <input type="file" @change="handleFileUpload" accept="image/*" class="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+            <div class="p-8 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-3 flex items-center gap-6 p-4 bg-slate-50 rounded-2xl">
+                    <div class="w-24 h-24 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden bg-white">
+                        <img v-if="form.image" :src="form.image" class="w-full h-full object-cover">
+                        <i v-else class="fas fa-camera text-slate-300 text-2xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-xs font-bold text-slate-500 mb-2 uppercase">Upload Desktop Photo</p>
+                        <input type="file" @change="handleFileUpload" accept="image/*" class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-700">
                     </div>
                 </div>
 
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-slate-400 uppercase">Customer</label>
-                    <input v-model="form.customer" class="w-full border rounded-lg p-2.5 bg-slate-50">
+                    <input v-model="form.customer" class="w-full border-slate-200 rounded-xl p-3 bg-white border outline-none focus:ring-2 focus:ring-slate-200">
                 </div>
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-slate-400 uppercase">Item Name</label>
-                    <input v-model="form.item" class="w-full border rounded-lg p-2.5 bg-slate-50">
+                    <input v-model="form.item" class="w-full border-slate-200 rounded-xl p-3 bg-white border outline-none focus:ring-2 focus:ring-slate-200">
                 </div>
                 <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase">Job #</label>
-                    <input v-model="form.jobNum" class="w-full border rounded-lg p-2.5 bg-slate-50">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Job Number</label>
+                    <input v-model="form.jobNum" class="w-full border-slate-200 rounded-xl p-3 bg-white border outline-none focus:ring-2 focus:ring-slate-200">
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase">Status</label>
-                    <select v-model="form.status" class="w-full border rounded-lg p-2.5 bg-slate-50">
-                        <option>Pending</option>
-                        <option>Ordered</option>
-                        <option>Shipped</option>
-                        <option>Completed</option>
-                    </select>
+                    <label class="text-[10px] font-bold text-blue-500 uppercase">Brief Link (URL)</label>
+                    <input v-model="form.briefLink" placeholder="https://..." class="w-full border-blue-100 rounded-xl p-3 bg-blue-50/30 border outline-none focus:ring-2 focus:ring-blue-100">
                 </div>
                 <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase">Assigned</label>
-                    <input v-model="form.assigned" class="w-full border rounded-lg p-2.5 bg-slate-50">
+                    <label class="text-[10px] font-bold text-emerald-500 uppercase">Quotation Link (URL)</label>
+                    <input v-model="form.quoteLink" placeholder="https://..." class="w-full border-emerald-100 rounded-xl p-3 bg-emerald-50/30 border outline-none focus:ring-2 focus:ring-emerald-100">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Status</label>
+                    <select v-model="form.status" class="w-full border-slate-200 rounded-xl p-3 bg-white border outline-none">
+                        <option>Pending</option><option>Ordered</option><option>Shipped</option><option>Completed</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-6 rounded-2xl">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Buy Cost & Currency</label>
+                        <div class="flex gap-2 mt-1">
+                            <select v-model="form.buyCurrency" class="border rounded-lg p-2 text-xs w-20">
+                                <option value="USD">USD</option><option value="RMB">RMB</option><option value="AUD">AUD</option>
+                            </select>
+                            <input v-model.number="form.buy" type="number" class="w-full border rounded-lg p-2">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Courier Cost (AUD)</label>
+                        <input v-model.number="form.courierCost" type="number" class="w-full border rounded-lg p-2 mt-1">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Other Cost (AUD)</label>
+                        <input v-model.number="form.otherCost" type="number" class="w-full border rounded-lg p-2 mt-1">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-blue-600 uppercase">Selling Price (AUD)</label>
+                        <input v-model.number="form.sell" type="number" class="w-full border-blue-200 border-2 rounded-lg p-2 mt-1 bg-white font-bold">
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Qty</label>
+                    <input v-model.number="form.qty" type="number" class="w-full border-slate-200 rounded-xl p-3 bg-white border">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Assigned To</label>
+                    <input v-model="form.assigned" class="w-full border-slate-200 rounded-xl p-3 bg-white border">
                 </div>
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-slate-400 uppercase">Supplier</label>
-                    <input v-model="form.supplier" class="w-full border rounded-lg p-2.5 bg-slate-50">
-                </div>
-
-                <div class="bg-blue-50 p-4 rounded-xl space-y-3 md:col-span-1">
-                    <label class="text-[10px] font-bold text-blue-500 uppercase">Buy Cost (Foreign)</label>
-                    <div class="flex gap-2">
-                        <select v-model="form.buyCurrency" class="border rounded p-2 text-xs">
-                            <option value="USD">USD</option>
-                            <option value="RMB">RMB</option>
-                        </select>
-                        <input v-model.number="form.buy" type="number" class="w-full border rounded p-2">
-                    </div>
-                </div>
-
-                <div class="bg-slate-50 p-4 rounded-xl space-y-3">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase">Qty</label>
-                    <input v-model.number="form.qty" type="number" class="w-full border rounded p-2">
-                </div>
-
-                <div class="bg-emerald-50 p-4 rounded-xl space-y-3">
-                    <label class="text-[10px] font-bold text-emerald-600 uppercase">Selling Price (AUD)</label>
-                    <input v-model.number="form.sell" type="number" class="w-full border rounded p-2">
+                    <input v-model="form.supplier" class="w-full border-slate-200 rounded-xl p-3 bg-white border">
                 </div>
             </div>
 
-            <div class="p-6 bg-slate-900 text-white flex justify-between items-center">
-                <div class="flex gap-8">
+            <div class="p-8 bg-slate-900 text-white flex justify-between items-center">
+                <div class="flex gap-10">
                     <div>
-                        <p class="text-[10px] text-slate-400 uppercase">Total Profit (AUD)</p>
-                        <p class="text-xl font-mono font-bold">${{ calculateProfit(form).toLocaleString() }}</p>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest">Est. Profit (AUD)</p>
+                        <p class="text-2xl font-mono font-bold text-emerald-400">${{ calculateProfit(form).toLocaleString() }}</p>
                     </div>
                     <div>
-                        <p class="text-[10px] text-slate-400 uppercase">Margin %</p>
-                        <p class="text-xl font-mono font-bold text-emerald-400">{{ calculateMargin(form) }}%</p>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest">Margin %</p>
+                        <p class="text-2xl font-mono font-bold text-blue-300">{{ calculateMargin(form) }}%</p>
                     </div>
                 </div>
                 <div class="flex gap-4">
-                    <button @click="closeModal" class="text-slate-400 hover:text-white transition">取消</button>
-                    <button @click="saveJob" class="bg-white text-slate-900 px-8 py-2 rounded-lg font-bold hover:bg-slate-100 transition shadow-lg">
-                        {{ isEditing ? '更新資料' : '儲存 Job' }}
+                    <button @click="closeModal" class="text-slate-400 hover:text-white transition font-bold px-4">CANCEL</button>
+                    <button @click="saveJob" class="bg-emerald-500 text-white px-10 py-3 rounded-xl font-black hover:bg-emerald-400 transition shadow-xl uppercase tracking-widest">
+                        Save Changes
                     </button>
                 </div>
             </div>
@@ -211,99 +222,81 @@
     createApp({
         setup() {
             const jobs = ref([]);
-            const searchQuery = ref('');
-            const sortAssignee = ref('');
             const showModal = ref(false);
             const isEditing = ref(false);
             const editIndex = ref(null);
+            const zoomImage = ref(null);
 
-            // 匯率預設值 (建議之後可接入 API)
-            const rates = { USD: 1.54, RMB: 0.21 }; // 1 外幣 = X AUD
+            const rates = { USD: 1.54, RMB: 0.21, AUD: 1.0 }; 
 
             const form = ref({
                 image: '', customer: '', item: '', jobNum: '', qty: 1, 
                 status: 'Pending', assigned: '', supplier: '', 
-                buy: 0, buyCurrency: 'USD', sell: 0
+                buy: 0, buyCurrency: 'USD', courierCost: 0, otherCost: 0, sell: 0,
+                briefLink: '', quoteLink: ''
             });
 
             onMounted(() => {
-                const saved = localStorage.getItem('sourcing_jobs_pro');
+                const saved = localStorage.getItem('sourcing_jobs_v3');
                 if (saved) jobs.value = JSON.parse(saved);
             });
 
-            // 核心邏輯：計算
-            const calculateProfit = (job) => {
-                const buyInAUD = job.buy * (rates[job.buyCurrency] || 1);
-                return (job.sell - buyInAUD) * job.qty;
+            const calculateProfit = (j) => {
+                const buyInAUD = (j.buy || 0) * (rates[j.buyCurrency] || 1);
+                const costsInAUD = (j.courierCost || 0) + (j.otherCost || 0);
+                return ( (j.sell || 0) - buyInAUD - costsInAUD ) * (j.qty || 1);
             };
 
-            const calculateMargin = (job) => {
-                const buyInAUD = job.buy * (rates[job.buyCurrency] || 1);
-                if (!job.sell) return 0;
-                return (((job.sell - buyInAUD) / job.sell) * 100).toFixed(1);
+            const calculateMargin = (j) => {
+                if (!j.sell) return 0;
+                const buyInAUD = (j.buy || 0) * (rates[j.buyCurrency] || 1);
+                const costsInAUD = (j.courierCost || 0) + (j.otherCost || 0);
+                return ( ((j.sell - buyInAUD - costsInAUD) / j.sell) * 100 ).toFixed(1);
             };
 
-            const filteredJobs = computed(() => {
-                return jobs.value.filter(job => {
-                    const matchSearch = job.customer.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
-                                        job.item.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                                        job.jobNum.toLowerCase().includes(searchQuery.value.toLowerCase());
-                    const matchAssignee = !sortAssignee.value || job.assigned === sortAssignee.value;
-                    return matchSearch && matchAssignee;
-                });
-            });
+            const totalSales = computed(() => jobs.value.reduce((sum, j) => sum + (j.sell * j.qty), 0));
 
-            const totalSales = computed(() => {
-                return filteredJobs.value.reduce((sum, job) => sum + (job.sell * job.qty), 0);
-            });
-
-            const uniqueAssignees = computed(() => [...new Set(jobs.value.map(j => j.assigned))].filter(n => n));
-
-            // 圖片上傳 (轉 Base64 存儲)
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
-                    reader.onload = (event) => {
-                        form.value.image = event.target.result;
-                    };
+                    reader.onload = (event) => { form.value.image = event.target.result; };
                     reader.readAsDataURL(file);
                 }
-            };
-
-            const statusBadge = (s) => {
-                const base = "px-2 py-0.5 rounded text-[10px] font-bold uppercase ";
-                if (s === 'Completed') return base + "bg-emerald-100 text-emerald-700";
-                if (s === 'Shipped') return base + "bg-blue-100 text-blue-700";
-                if (s === 'Ordered') return base + "bg-amber-100 text-amber-600";
-                return base + "bg-slate-100 text-slate-500";
             };
 
             const saveJob = () => {
                 if (isEditing.value) jobs.value[editIndex.value] = { ...form.value };
                 else jobs.value.push({ ...form.value });
-                localStorage.setItem('sourcing_jobs_pro', JSON.stringify(jobs.value));
+                localStorage.setItem('sourcing_jobs_v3', JSON.stringify(jobs.value));
                 closeModal();
             };
 
             const openAddModal = () => {
                 isEditing.value = false;
-                form.value = { image: '', customer: '', item: '', jobNum: '', qty: 1, status: 'Pending', assigned: '', supplier: '', buy: 0, buyCurrency: 'USD', sell: 0 };
+                form.value = { image: '', customer: '', item: '', jobNum: '', qty: 1, status: 'Pending', assigned: '', supplier: '', buy: 0, buyCurrency: 'USD', courierCost: 0, otherCost: 0, sell: 0, briefLink: '', quoteLink: '' };
                 showModal.value = true;
             };
 
-            const editJob = (index) => {
+            const editJob = (idx) => {
                 isEditing.value = true;
-                editIndex.value = index;
-                form.value = { ...jobs.value[index] };
+                editIndex.value = idx;
+                form.value = { ...jobs.value[idx] };
                 showModal.value = true;
             };
 
             const closeModal = () => { showModal.value = false; };
+            const statusBadge = (s) => {
+                const base = "px-2 py-1 rounded text-[10px] font-bold uppercase ";
+                if (s === 'Completed') return base + "bg-emerald-100 text-emerald-700";
+                if (s === 'Shipped') return base + "bg-blue-100 text-blue-700";
+                return base + "bg-slate-100 text-slate-500";
+            };
 
             return {
-                jobs, searchQuery, sortAssignee, showModal, form, isEditing, filteredJobs, totalSales, uniqueAssignees,
-                handleFileUpload, calculateProfit, calculateMargin, statusBadge, saveJob, editJob, openAddModal, closeModal
+                jobs, showModal, form, isEditing, zoomImage,
+                totalSales, filteredJobs: computed(() => jobs.value),
+                handleFileUpload, calculateProfit, calculateMargin, saveJob, openAddModal, editJob, closeModal, statusBadge
             }
         }
     }).mount('#app')
